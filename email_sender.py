@@ -18,6 +18,7 @@ def send_welcome_email(name: str, email: str, password: str) -> bool:
     try:
         resend.Emails.send({
             "from": FROM_ADDRESS,
+            "reply_to": "dcfarquharson@gmail.com",
             "to": [email],
             "subject": "Welcome to the Trelawny Town Society",
             "html": f"""
