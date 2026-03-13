@@ -162,3 +162,120 @@ def change_password(payload: ChangePasswordRequest):
     cur.close(); conn.close()
 
     return {"status": "ok", "message": "Password updated successfully."}
+
+
+# ── Manifestations & Encouragements ──────────────────────────────────────────
+
+class ManifestationRequest(BaseModel):
+    email: str
+    date: str
+    gratitude_1: str = None
+    gratitude_2: str = None
+    gratitude_3: str = None
+    gratitude_done: bool = None
+    morning_vis: str = None
+    vis_done: bool = None
+    inspired_action: str = None
+    action_taken: bool = None
+    evening_vis: str = None
+    evening_done: bool = None
+    encouragement_received: bool = None
+
+@router.get("/manifest/get")
+def get_manifest(email: str, date: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM daily_manifestations WHERE email = %s AND date = %s", (email, date))
+        row = cur.fetchone()
+        if row:
+            return {"status": "ok", "data": dict(row)}
+        return {"status": "not_found"}
+    except Exception as e:
+        return {"status": "error", "message": "Database error"}
+    finally:
+        cur.close()
+        conn.close()
+
+@router.post("/manifest/save")
+def save_manifest(payload: ManifestationRequest):
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        # Dictionary of fields to update
+        data = payload.dict(exclude_unset=True)
+        email = data.pop("email")
+        date = data.pop("date")
+
+        cur.execute("SELECT email FROM daily_manifestations WHERE email = %s AND date = %s", (email, date))
+        exists = cur.fetchone()
+
+        if not exists:
+            cur.execute("INSERT INTO daily_manifestations (email, date) VALUES (%s, %s)", (email, date))
+
+        if data:
+            set_clause = ", ".join(f"{k} = %s" for k in data.keys())
+            values = list(data.values())
+            values.extend([email, date])
+            cur.execute(f"UPDATE daily_manifestations SET {set_clause} WHERE email = %s AND date = %s", values)
+
+        conn.commit()
+        return {"status": "ok"}
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": "Failed to save data"}
+    finally:
+        cur.close()
+        conn.close()
+
+@router.get("/encouragement/daily")
+def get_daily_encouragement(date: str):
+    word = "Every step you take is a step toward your manifestation."
+    try:
+        import hashlib
+        words = [
+            "Your focus creates your reality. Stay focused on 1604.",
+            "Every step you take is a step toward your manifestation.",
+            "The universe is conspiring in your favor today.",
+            "You are the master of your fate and the captain of your soul.",
+            "Manifestation is the art of believing it into existence.",
+            "Your gratitude is the magnet for all your desires.",
+            "Rest in the knowing that it is already done.",
+            "Success is a state of mind. Adopt the mind of a winner.",
+            "You are worthy of all the abundance flowing to you.",
+            "Today is a perfect day to align with your highest self.",
+            "Confidence is the cornerstone of your success.",
+            "Believe in the power of your vision.",
+            "Your dreams are valid and achievable.",
+            "Abundance is your birthright.",
+            "Stay true to your path and the results will follow.",
+            "Persistence is the key to manifesting your goals.",
+            "Your thoughts are the seeds of your future.",
+            "Embrace the journey with an open heart.",
+            "You have everything you need within you.",
+            "Consistency in your practice leads to mastery.",
+            "The light within you shines brightly today.",
+            "Affirm your goals with conviction.",
+            "Your energy attracts your experiences.",
+            "Be intentional in everything you do.",
+            "Your potential is limitless.",
+            "Find joy in the present moment.",
+            "Trust the process of life.",
+            "You are powerful beyond measure.",
+            "Radiate positivity and watch the world respond.",
+            "Your vision is becoming clearer every day.",
+            "Stay patient and stay focused.",
+            "Great things take time and dedication.",
+            "Celebrate every victory, no matter how small.",
+            "You are a magnet for miracles.",
+            "Harmonize with the rhythm of the universe.",
+            "Peace and prosperity are yours today.",
+            "Your dedication is inspiring.",
+            "Keep moving forward with grace.",
+        ]
+        idx = int(hashlib.md5(date.encode()).hexdigest(), 16) % len(words)
+        word = words[idx]
+    except Exception:
+        pass
+    
+    return {"status": "ok", "word": word}
